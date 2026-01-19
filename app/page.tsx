@@ -52,7 +52,7 @@ export default function HomePage() {
 
     setSubmitting(true)
     try {
-      const res = await fetch('/api/ledger/create', {
+      const res = await fetch('/api/ledger', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
