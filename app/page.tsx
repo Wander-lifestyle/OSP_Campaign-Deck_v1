@@ -1,268 +1,212 @@
-'use client';
+'use client'
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { LedgerEntry, LedgerStatus } from '@/lib/types';
+import { useState, useEffect, FormEvent } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import type { LedgerEntry } from '@/lib/types'
 
 export default function HomePage() {
-  const [ledgers, setLedgers] = useState<LedgerEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showCreate, setShowCreate] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const router = useRouter()
 
-  const fetchLedgers = async () => {
-    try {
-      const res = await fetch('/api/ledger');
-      const data = await res.json();
-      setLedgers(data);
-    } catch (err) {
-      console.error('Failed to fetch:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Form state
+  const [projectName, setProjectName] = useState('')
+  const [objective, setObjective] = useState('')
+  const [ownerName, setOwnerName] = useState('')
+  const [ownerEmail, setOwnerEmail] = useState('')
 
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Ledger list
+  const [ledgers, setLedgers] = useState<LedgerEntry[]>([])
+  const [loadingLedgers, setLoadingLedgers] = useState(true)
+
+  // Load existing ledgers for the table
   useEffect(() => {
-    fetchLedgers();
-  }, []);
+    const loadLedgers = async () => {
+      try {
+        const res = await fetch('/api/ledger')
+        if (!res.ok) throw new Error('Failed to load ledgers')
+        const data = await res.json()
+        setLedgers(Array.isArray(data) ? data : [])
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setLoadingLedgers(false)
+      }
+    }
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3000);
-  };
+    loadLedgers()
+  }, [])
 
-  const handleCreated = (name: string) => {
-    setShowCreate(false);
-    fetchLedgers();
-    showToast(`✓ Created "${name}"`);
-  };
+  // Handle brief form submit
+  const handleCreateBrief = async (e: FormEvent) => {
+    e.preventDefault()
+    setError(null)
 
-  const statusCounts = {
-    intake: ledgers.filter(l => l.status === 'intake').length,
-    active: ledgers.filter(l => l.status === 'active').length,
-    shipped: ledgers.filter(l => l.status === 'shipped').length,
-    archived: ledgers.filter(l => l.status === 'archived').length,
-  };
+    // Very simple validation
+    if (!projectName || !objective || !ownerName || !ownerEmail) {
+      setError('Please fill in all fields.')
+      return
+    }
 
-  return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur border-b border-zinc-800">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold">
-              D
-            </div>
-            <span className="font-semibold text-lg">Campaign Deck</span>
-            <span className="text-xs text-zinc-500 px-2 py-0.5 bg-zinc-900 rounded-full border border-zinc-800">
-              Editorial OS
-            </span>
-          </div>
-          <button onClick={() => setShowCreate(true)} className="btn btn-primary">
-            + New Project
-          </button>
-        </div>
-      </header>
-
-      {/* Stats */}
-      <div className="max-w-6xl mx-auto px-6 py-6">
-        <div className="grid grid-cols-4 gap-4">
-          {(['intake', 'active', 'shipped', 'archived'] as LedgerStatus[]).map((status) => (
-            <div key={status} className="card px-4 py-3 flex items-center justify-between">
-              <span className={`text-xs font-medium uppercase tracking-wide px-2 py-1 rounded border status-${status}`}>
-                {status}
-              </span>
-              <span className="text-2xl font-semibold">{statusCounts[status]}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="max-w-6xl mx-auto px-6 pb-8">
-        <div className="card overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-zinc-800 text-xs text-zinc-500 uppercase tracking-wide">
-                <th className="text-left px-4 py-3">Project</th>
-                <th className="text-left px-4 py-3">Owner</th>
-                <th className="text-left px-4 py-3">Status</th>
-                <th className="text-left px-4 py-3">Channels</th>
-                <th className="text-left px-4 py-3">Updated</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-800">
-              {loading ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-12 text-center text-zinc-500">
-                    Loading...
-                  </td>
-                </tr>
-              ) : ledgers.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-12 text-center text-zinc-500">
-                    No projects yet.{' '}
-                    <button onClick={() => setShowCreate(true)} className="text-indigo-400 hover:underline">
-                      Create one →
-                    </button>
-                  </td>
-                </tr>
-              ) : (
-                ledgers.map((ledger) => (
-                  <tr key={ledger.ledger_id} className="hover:bg-zinc-800/50 cursor-pointer">
-                    <td className="px-4 py-3">
-                      <Link href={`/ledger/${ledger.ledger_id}`} className="block">
-                        <div className="font-medium">{ledger.project_name}</div>
-                        <div className="text-xs text-zinc-500 mono">{ledger.ledger_id}</div>
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-zinc-400">{ledger.owner.name}</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs font-medium px-2 py-1 rounded border status-${ledger.status}`}>
-                        {ledger.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1">
-                        {ledger.channels.slice(0, 3).map((ch) => (
-                          <span key={ch} className="text-xs bg-zinc-800 px-2 py-0.5 rounded">
-                            {ch}
-                          </span>
-                        ))}
-                        {ledger.channels.length > 3 && (
-                          <span className="text-xs text-zinc-500">+{ledger.channels.length - 3}</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-zinc-500">
-                      {new Date(ledger.updated_at).toLocaleDateString()}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Create Modal */}
-      {showCreate && <CreateModal onClose={() => setShowCreate(false)} onCreated={handleCreated} />}
-
-      {/* Toast */}
-      {toast && <div className="toast-success">{toast}</div>}
-    </div>
-  );
-}
-
-function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (name: string) => void }) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [name, setName] = useState('');
-  const [ownerName, setOwnerName] = useState('');
-  const [ownerEmail, setOwnerEmail] = useState('');
-  const [channels, setChannels] = useState('');
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-
+    setSubmitting(true)
     try {
       const res = await fetch('/api/ledger/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          project_name: name,
+          project_name: projectName,
           owner: { name: ownerName, email: ownerEmail },
-          channels: channels.split(',').map(c => c.trim().toLowerCase()).filter(Boolean),
+          snapshot: { objective },
         }),
-      });
-
-      const data = await res.json();
+      })
 
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to create');
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error || 'Failed to create brief')
       }
 
-      onCreated(name);
+      const created: LedgerEntry = await res.json()
+
+      // Go to the detail page for the new ledger
+      router.push(`/ledger/${created.ledger_id}`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
-      setLoading(false);
+      setError(err instanceof Error ? err.message : 'Unknown error')
+    } finally {
+      setSubmitting(false)
     }
-  };
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="modal-backdrop" onClick={onClose} />
-      <div className="relative card w-full max-w-md p-6 animate-slide-up">
-        <h2 className="text-lg font-semibold mb-4">New Project</h2>
+    <main className="min-h-screen bg-slate-950 text-slate-50">
+      <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
+        {/* Header */}
+        <header className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Campaign Deck</h1>
+        </header>
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-sm">
-            {error}
-          </div>
-        )}
+        {/* Brief form */}
+        <section className="bg-slate-900/70 border border-slate-800 rounded-xl p-6 space-y-4">
+          <h2 className="text-lg font-semibold">Create basic brief</h2>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm text-zinc-400 mb-1">Project Name *</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              placeholder="Q1 Brand Campaign"
-              className="input"
-            />
-          </div>
+          {error && (
+            <p className="text-sm text-red-400">
+              {error}
+            </p>
+          )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm text-zinc-400 mb-1">Owner Name *</label>
-              <input
-                type="text"
-                value={ownerName}
-                onChange={(e) => setOwnerName(e.target.value)}
-                required
-                placeholder="Sarah Chen"
-                className="input"
-              />
+          <form className="space-y-4" onSubmit={handleCreateBrief}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm mb-1">Project name</label>
+                <input
+                  className="w-full rounded-md bg-slate-950 border border-slate-700 px-3 py-2 text-sm"
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  placeholder="Q1 Brand Campaign"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm mb-1">Objective</label>
+                <input
+                  className="w-full rounded-md bg-slate-950 border border-slate-700 px-3 py-2 text-sm"
+                  value={objective}
+                  onChange={(e) => setObjective(e.target.value)}
+                  placeholder="Increase brand awareness by 25%"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm mb-1">Owner name</label>
+                <input
+                  className="w-full rounded-md bg-slate-950 border border-slate-700 px-3 py-2 text-sm"
+                  value={ownerName}
+                  onChange={(e) => setOwnerName(e.target.value)}
+                  placeholder="Sarah Chen"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm mb-1">Owner email</label>
+                <input
+                  className="w-full rounded-md bg-slate-950 border border-slate-700 px-3 py-2 text-sm"
+                  value={ownerEmail}
+                  onChange={(e) => setOwnerEmail(e.target.value)}
+                  placeholder="sarah@company.com"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm text-zinc-400 mb-1">Owner Email *</label>
-              <input
-                type="email"
-                value={ownerEmail}
-                onChange={(e) => setOwnerEmail(e.target.value)}
-                required
-                placeholder="sarah@company.com"
-                className="input"
-              />
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="mt-2 inline-flex items-center px-4 py-2 rounded-md bg-indigo-500 hover:bg-indigo-400 disabled:opacity-60 text-sm font-medium"
+            >
+              {submitting ? 'Creating…' : 'Create brief'}
+            </button>
+          </form>
+        </section>
+
+        {/* Ledger table */}
+        <section className="bg-slate-900/70 border border-slate-800 rounded-xl p-6">
+          <h2 className="text-lg font-semibold mb-4">Campaigns</h2>
+
+          {loadingLedgers ? (
+            <p className="text-sm text-slate-400">Loading…</p>
+          ) : ledgers.length === 0 ? (
+            <p className="text-sm text-slate-400">No projects yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-slate-400 border-b border-slate-800">
+                    <th className="py-2">Project</th>
+                    <th className="py-2">Owner</th>
+                    <th className="py-2">Status</th>
+                    <th className="py-2">Channels</th>
+                    <th className="py-2">Updated</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ledgers.map((ledger) => (
+                    <tr
+                      key={ledger.ledger_id}
+                      className="border-b border-slate-800/60 hover:bg-slate-800/40 cursor-pointer"
+                      onClick={() => router.push(`/ledger/${ledger.ledger_id}`)}
+                    >
+                      <td className="py-2">
+                        <div className="font-medium">
+                          {ledger.project_name}
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          {ledger.ledger_id}
+                        </div>
+                      </td>
+                      <td className="py-2">
+                        <div>{ledger.owner.name}</div>
+                        <div className="text-xs text-slate-500">
+                          {ledger.owner.email}
+                        </div>
+                      </td>
+                      <td className="py-2 capitalize">{ledger.status}</td>
+                      <td className="py-2 text-xs">
+                        {ledger.channels.slice(0, 3).join(', ')}
+                        {ledger.channels.length > 3 &&
+                          ` +${ledger.channels.length - 3}`}
+                      </td>
+                      <td className="py-2 text-xs">
+                        {new Date(ledger.updated_at).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          </div>
-
-          <div>
-            <label className="block text-sm text-zinc-400 mb-1">Channels</label>
-            <input
-              type="text"
-              value={channels}
-              onChange={(e) => setChannels(e.target.value)}
-              placeholder="instagram, email, tiktok"
-              className="input"
-            />
-            <p className="text-xs text-zinc-500 mt-1">Comma-separated</p>
-          </div>
-
-          <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="btn btn-secondary flex-1">
-              Cancel
-            </button>
-            <button type="submit" disabled={loading} className="btn btn-primary flex-1 disabled:opacity-50">
-              {loading ? 'Creating...' : 'Create'}
-            </button>
-          </div>
-        </form>
+          )}
+        </section>
       </div>
-    </div>
-  );
+    </main>
+  )
 }
