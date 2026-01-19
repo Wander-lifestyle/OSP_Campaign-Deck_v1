@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, monospace;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: #0a0a0a;
+  color: #fafafa;
+}
+
+.mono { font-family: var(--font-mono); }
+
+/* Status badges */
+.status-intake { @apply bg-amber-500/10 text-amber-400 border-amber-500/20; }
+.status-active { @apply bg-blue-500/10 text-blue-400 border-blue-500/20; }
+.status-shipped { @apply bg-emerald-500/10 text-emerald-400 border-emerald-500/20; }
+.status-archived { @apply bg-zinc-500/10 text-zinc-400 border-zinc-500/20; }
+
+/* Card */
+.card {
+  @apply bg-zinc-900 border border-zinc-800 rounded-lg;
+}
+
+/* Button */
+.btn {
+  @apply px-4 py-2 rounded-lg text-sm font-medium transition-colors;
+}
+.btn-primary {
+  @apply bg-indigo-600 hover:bg-indigo-700 text-white;
+}
+.btn-secondary {
+  @apply bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700;
+}
+
+/* Input */
+.input {
+  @apply w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm;
+  @apply focus:outline-none focus:border-indigo-500;
+}
+
+/* Modal backdrop */
+.modal-backdrop {
+  @apply fixed inset-0 bg-black/60 backdrop-blur-sm;
+}
+
+/* Success toast */
+.toast-success {
+  @apply fixed bottom-4 right-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400;
+  @apply px-4 py-3 rounded-lg shadow-lg animate-slide-up;
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-up { animation: slide-up 0.3s ease-out; }
